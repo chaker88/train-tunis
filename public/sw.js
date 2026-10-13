@@ -87,6 +87,7 @@ function staleWhileRevalidate(event) {
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
+  // Cross-origin requests (e.g. Cloudflare Web Analytics) are never intercepted or cached.
   if (request.method !== "GET" || url.origin !== location.origin || KILL_FILE.test(url.pathname)) return;
 
   if (request.mode === "navigate") {

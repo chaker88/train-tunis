@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import vm from "node:vm";
 
 /* A tiny DOM stand-in. innerHTML/outerHTML/insertAdjacentHTML throw, so any HTML parsing fails the test. */
 class FakeNode {
@@ -133,7 +134,20 @@ test("readAlerts keeps only known fields and drops invalid alerts", () => {
 /* Static checks on the source files. */
 const pub = (p) => fileURLToPath(new URL(`../public/${p}`, import.meta.url));
 const read = (p) => readFileSync(pub(p), "utf8");
-const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'";
+// The only third-party origins allowed anywhere: Cloudflare Web Analytics (script + beacon). See README "Analytics".
+const ANALYTICS = { "script-src": "https://static.cloudflareinsights.com", "connect-src": "https://cloudflareinsights.com" };
+const CSP =
+  "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self'; img-src 'self' data:; font-src 'self'; " +
+  "connect-src 'self' https://cloudflareinsights.com; manifest-src 'self'; worker-src 'self'";
+
+function externalSources(policy) {
+  const found = [];
+  for (const directive of policy.split(";").map((d) => d.trim()).filter(Boolean)) {
+    const [name, ...sources] = directive.split(/\s+/);
+    for (const src of sources) if (/^(https?:|wss?:|\*|[a-z0-9-]+\.[a-z])/i.test(src)) found.push(`${name} ${src}`);
+  }
+  return found.sort();
+}
 
 test("no HTML-parsing sinks or dynamic code in any script", () => {
   const files = [...readdirSync(pub("js")).map((f) => `js/${f}`), "sw.js"];
@@ -157,6 +171,15 @@ test("index.html has a strict CSP and nothing inline", () => {
   assert.ok(!/<style/i.test(html), "no <style> block");
   assert.ok(!/\sstyle\s*=/.test(html), "no style= attribute");
   assert.ok(!/\son[a-z]+\s*=/.test(html), "no inline event handler");
+});
+
+test("the only external origins in the CSP are the two Cloudflare Web Analytics domains", () => {
+  const expected = Object.entries(ANALYTICS).map(([d, o]) => `${d} ${o}`).sort();
+  const meta = /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(read("index.html"))[1];
+  const header = /^\s*Content-Security-Policy: (.+)$/m.exec(read("_headers"))[1];
+  assert.deepEqual(externalSources(meta), expected);
+  assert.deepEqual(externalSources(header), expected);
+  assert.equal(meta, header.replace(" frame-ancestors 'none';", ""), "meta and header policies match (minus frame-ancestors)");
 });
 
 test("_headers sets the security headers and no-cache rules", () => {
@@ -193,4 +216,34 @@ test("service worker has the kill switch and never caches sw-kill.json", () => {
   assert.match(sw, /caches\.delete/);
   assert.match(sw, /KILL_FILE\.test\(url\.pathname\)\) return;/);
   assert.deepEqual(JSON.parse(read("data/sw-kill.json")), { kill: false });
+});
+
+test("service worker never intercepts or caches Cloudflare Web Analytics", async () => {
+  const handlers = {};
+  const cachePuts = [];
+  const sandbox = {
+    self: { addEventListener: (type, fn) => (handlers[type] = fn), registration: {}, clients: {} },
+    location: new URL("https://trains.example/sw.js"),
+    caches: { open: async () => ({ put: (req) => cachePuts.push(req.url ?? String(req)), addAll: async () => {} }), match: async () => undefined, keys: async () => [] },
+    fetch: async () => ({ ok: true, clone: () => ({}) }),
+    URL,
+    Date,
+    Promise,
+  };
+  vm.runInNewContext(read("sw.js"), sandbox);
+  const fire = (url, mode = "no-cors") => {
+    const calls = { respondWith: 0, waitUntil: 0 };
+    handlers.fetch({
+      request: { url, method: "GET", mode },
+      respondWith: () => calls.respondWith++,
+      waitUntil: () => calls.waitUntil++,
+    });
+    return calls;
+  };
+  for (const url of ["https://static.cloudflareinsights.com/beacon.min.js", "https://cloudflareinsights.com/cdn-cgi/rum"]) {
+    assert.deepEqual(fire(url), { respondWith: 0, waitUntil: 0 }, url);
+  }
+  assert.equal(fire("https://trains.example/js/app.js").respondWith, 1, "same-origin files are still handled");
+  await new Promise((r) => setTimeout(r, 10));
+  assert.ok(!cachePuts.some((u) => /cloudflareinsights/.test(u)));
 });

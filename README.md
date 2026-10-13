@@ -3,7 +3,7 @@
 An **unofficial**, static, mobile-first website that shows the next 3 trains on the Tunis suburban network (lines **A**, **D** and **E**). Pick a line, your current station and your destination. The site shows departure, arrival, trip duration and a live countdown. It uses Tunisia time (`Africa/Tunis`) and automatically picks the right timetable (winter, summer, Ramadan), with Sunday and public-holiday service.
 
 - Bilingual: Arabic (default, right-to-left) and English, toggled in the top-right corner.
-- Plain HTML, CSS and vanilla JavaScript (ES modules). No framework, no build step, no backend, no external requests.
+- Plain HTML, CSS and vanilla JavaScript (ES modules). No framework, no build step, no backend. The only external requests are Cloudflare Web Analytics, once it is switched on (see [Analytics](#analytics)).
 - Light and dark mode. Works offline once installed (the service worker is active only when not on localhost).
 - "Install the app" button on Android/Chrome, plus a short "Share → Add to Home Screen" guide on iPhone/iPad. It is hidden once the app is installed.
 - Strict Content-Security-Policy. All text from data files is shown as plain text, never as HTML.
@@ -189,13 +189,28 @@ If `alerts.json` is broken and you reload the page without running `start.bat`, 
 - **Turn on two-factor authentication (2FA)** on GitHub and on the hosting account (Cloudflare or Netlify). Use an authenticator app, not SMS, and keep the recovery codes somewhere safe and offline.
 - **Use strong, unique passwords** for GitHub, the hosting account and the email address behind them. A password manager makes this easy. Never reuse a password, and never share your login: invite helpers as collaborators instead, so you can remove them later.
 - **Never paste HTML into `alerts.json`.** Write plain sentences only: no `<b>`, `<a href…>` or `<script>`, and no copied web content. `start.bat` refuses messages that contain HTML. Even if HTML slipped through, the site shows it as plain text.
-- **Don't add scripts, fonts or images from other websites.** The site's security policy (CSP) blocks anything that isn't served from the site itself. Keep the `public/_headers` file when publishing; it sends these protections to every visitor.
+- **Don't add scripts, fonts or images from other websites.** The site's security policy (CSP) blocks anything that isn't served from the site itself, with one exception: Cloudflare Web Analytics (see [Analytics](#analytics)). Keep the `public/_headers` file when publishing; it sends these protections to every visitor.
 - **Emergency switch for phones stuck on a broken version (`sw-kill.json`).** Phones keep an offline copy of the site. If a bad update gets stuck in that copy:
   1. Open `public/data/sw-kill.json` and change it to `{ "kill": true }`.
   2. Publish. Each phone deletes its offline copy and loads the live site the next time it opens the page.
   3. After a few days, once the fix is published, set it back to `{ "kill": false }`. Offline mode then returns by itself.
   While the switch is on, the site still works normally, just not offline. `start.bat` reminds you when it is on.
 - **Check before you publish:** look at what changed (for example with `git diff`), and only publish from your own computer.
+
+## Analytics
+
+The site may use **Cloudflare Web Analytics**: privacy-friendly visit counts, with no cookies and no personal data. It is the **only** third-party service the site talks to, and the security policy allows exactly two outside addresses for it:
+
+| Address | Allowed in | Why |
+|---|---|---|
+| `https://static.cloudflareinsights.com` | `script-src` | Loads Cloudflare's small analytics script (`beacon.min.js`) |
+| `https://cloudflareinsights.com` | `connect-src` | Where that script sends the anonymous page-view count |
+
+Everything else stays limited to the site itself. This is set in both `public/_headers` and the `<meta>` tag in `public/index.html`, and a test (`tests/security.test.mjs`) fails if any other outside address is ever added. The offline service worker ignores both addresses: it never intercepts or stores analytics requests, so offline mode never sends or replays stale counts.
+
+**To turn it on:** in the Cloudflare dashboard, open your site's project → **Metrics → Web Analytics → Enable**. Cloudflare then adds its script automatically, with no code change. If your setup asks you to paste a snippet instead, add it to `public/index.html` just before `</body>`, exactly as given (a `<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='…'>` tag). It works with the security policy because it loads from the allowed address and contains no inline code.
+
+If analytics stops working after a Cloudflare change (for example, it starts using a different address), the browser console will show "Refused to load…". Only then, update both CSP lines and the `ANALYTICS` list in `tests/security.test.mjs` together.
 
 ## Project layout
 

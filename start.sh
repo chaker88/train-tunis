@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Build, check and serve the site locally (macOS / Linux). Run: ./start.sh
+# Build, check and serve the site locally (macOS / Linux). Run: ./start.sh   (or ./start.sh lan for phones on the same Wi-Fi)
 cd "$(dirname "$0")" || exit 1
 PY=python3
 command -v python3 >/dev/null 2>&1 || PY=python
@@ -18,6 +18,14 @@ $PY scripts/validate_alerts.py || fail
 echo
 echo "[3/3] Running the tests ..."
 $PY -m unittest discover tests || fail
+
+if [ "$1" = "lan" ]; then
+  IP=$($PY scripts/lan_ip.py)
+  echo
+  echo "On your phone (same Wi-Fi), open:  http://${IP:-<this computer's IP>}:8000"
+  echo "Press Ctrl+C to stop the server."
+  exec $PY -m http.server 8000 --bind 0.0.0.0 --directory public
+fi
 
 echo
 echo "All good. Opening http://localhost:8000 (press Ctrl+C to stop the server)."

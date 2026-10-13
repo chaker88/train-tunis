@@ -5,6 +5,8 @@ An **unofficial**, static, mobile-first website that shows the next 3 trains on 
 - Bilingual: Arabic (default, right-to-left) and English, toggled in the top-right corner.
 - Plain HTML, CSS and vanilla JavaScript (ES modules). No framework, no build step, no backend, no external requests.
 - Light and dark mode. Works offline once installed (the service worker is active only when not on localhost).
+- "Install the app" button on Android/Chrome, plus a short "Share → Add to Home Screen" guide on iPhone/iPad. It is hidden once the app is installed.
+- Strict Content-Security-Policy. All text from data files is shown as plain text, never as HTML.
 
 **Data source:** SNCFT Banlieue de Tunis timetables, transcribed into CSV files in `data/raw/`. This app is not affiliated with SNCFT. Always check at the station.
 
@@ -30,6 +32,18 @@ Test a scenario: http://localhost:8000/?now=2026-10-12T08:05
 > On Node 21 and newer, `node --test tests/` no longer accepts a directory. Use `node --test "tests/*.test.mjs"` instead.
 
 The site loads its data with `fetch()`, so it must be served over HTTP. Opening `index.html` directly from disk will not work.
+
+### Test on your phone (same Wi-Fi)
+
+Double-click **`start_lan.bat`** (or run `./start.sh lan`). After the usual checks, it prints this PC's address, for example:
+
+```
+On your phone (same Wi-Fi), open:  http://192.168.1.15:8000
+```
+
+Open that address on the phone. If Windows asks whether Python may use the network, allow it on **Private networks** only, and make sure your Wi-Fi is set as a *Private* network in Windows settings. Close the window when you're done, so the site stops being visible on the Wi-Fi.
+
+Over `http://192.168…` the phone treats the site as "not secure", so the **Install** button and offline mode don't appear there. That's normal: they work once the site is online with HTTPS.
 
 ### Simulated time
 
@@ -161,6 +175,7 @@ Separate several planned alerts with a comma: `[ {...}, {...} ]`. Expired ones a
 | `is not after ...` / `Times must increase` | A time is earlier than the previous stop's: probably a typing mistake in that train's row. |
 | `train number ... is already used` | Two rows have the same train number. |
 | `unknown code` in `Jours_Circulation` | Use only `-`, `A`, `B`, `C` or `D`. |
+| `contains HTML code` | Remove the `<...>` tags or `&...;` codes from the message and write plain text. |
 | `alerts.json ... not valid JSON` | A comma or quote is missing near the line given. Compare with the templates above. |
 | `"severity" must be ...`, `text "ar" is missing`, `"start" ... must be before "end"` | Fix that field in `alerts.json` as described. |
 | `The server could not start` | The site is already running in another window. Close it and try again. |
@@ -168,6 +183,19 @@ Separate several planned alerts with a comma: `[ {...}, {...} ]`. Expired ones a
 If `alerts.json` is broken and you reload the page without running `start.bat`, the site doesn't break: it shows "Have a nice trip" and ignores the broken message.
 
 ---
+
+### 6. Security checklist for the owner
+
+- **Turn on two-factor authentication (2FA)** on GitHub and on the hosting account (Cloudflare or Netlify). Use an authenticator app, not SMS, and keep the recovery codes somewhere safe and offline.
+- **Use strong, unique passwords** for GitHub, the hosting account and the email address behind them. A password manager makes this easy. Never reuse a password, and never share your login: invite helpers as collaborators instead, so you can remove them later.
+- **Never paste HTML into `alerts.json`.** Write plain sentences only: no `<b>`, `<a href…>` or `<script>`, and no copied web content. `start.bat` refuses messages that contain HTML. Even if HTML slipped through, the site shows it as plain text.
+- **Don't add scripts, fonts or images from other websites.** The site's security policy (CSP) blocks anything that isn't served from the site itself. Keep the `public/_headers` file when publishing; it sends these protections to every visitor.
+- **Emergency switch for phones stuck on a broken version (`sw-kill.json`).** Phones keep an offline copy of the site. If a bad update gets stuck in that copy:
+  1. Open `public/data/sw-kill.json` and change it to `{ "kill": true }`.
+  2. Publish. Each phone deletes its offline copy and loads the live site the next time it opens the page.
+  3. After a few days, once the fix is published, set it back to `{ "kill": false }`. Offline mode then returns by itself.
+  While the switch is on, the site still works normally, just not offline. `start.bat` reminds you when it is on.
+- **Check before you publish:** look at what changed (for example with `git diff`), and only publish from your own computer.
 
 ## Project layout
 
@@ -186,7 +214,12 @@ If `alerts.json` is broken and you reload the page without running `start.bat`, 
 | `public/js/app.js` | Page wiring and rendering |
 | `tests/` | Python (`unittest`) and JavaScript (`node:test`) tests |
 | `images/` | Original owner-supplied images (optimized copies are in `public/assets/img/`) |
+| `public/data/sw-kill.json` | Emergency switch that removes the offline copy from every phone (see the security checklist) |
+| `public/_headers` | Security headers and cache rules for Cloudflare Pages / Netlify |
+| `public/js/dom.js` / `alerts.js` / `install.js` | Safe DOM building, alert rendering, install button |
+| `scripts/lan_ip.py` | Prints this PC's Wi-Fi address (used by `start_lan.bat`) |
 | `start.bat` / `start.sh` | One-click build, check, test and run |
+| `start_lan.bat` | Same as `start.bat`, but reachable from a phone on the same Wi-Fi |
 
 ## Credits
 

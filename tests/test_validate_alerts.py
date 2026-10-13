@@ -88,6 +88,24 @@ class ValidateAlertsTest(unittest.TestCase):
         bad["ramadan"]["end"] = "2027-02-01"
         self.assertIn("must not be after", va.validate_overrides(bad)[0])
 
+    def test_kill_switch_file(self):
+        self.assertEqual(va.validate_kill({"kill": False}), [])
+        self.assertEqual(va.validate_kill({"kill": True}), [])
+        self.assertTrue(va.validate_kill({"kill": "yes"}))
+        self.assertTrue(va.validate_kill([]))
+
+    def test_html_in_alert_is_rejected(self):
+        # The site would show it as plain text anyway; the validator stops the mistake early.
+        for text in ("<img src=x onerror=alert(1)>", "Trains <b>cancelled</b>", "Tom &amp; Jerry"):
+            data = copy.deepcopy(DEFAULT)
+            data["message"]["en"] = text
+            errors = va.validate_alerts(data)
+            self.assertEqual(len(errors), 1, text)
+            self.assertIn("HTML", errors[0])
+        data = copy.deepcopy(DEFAULT)
+        data["message"]["en"] = "Delays < 10 min & trains 5 > 4"
+        self.assertEqual(va.validate_alerts(data), [])
+
 
 if __name__ == "__main__":
     unittest.main()

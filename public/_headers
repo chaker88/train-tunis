@@ -1,0 +1,21 @@
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), camera=(), microphone=(), payment=()
+  X-Frame-Options: DENY
+
+/data/alerts.json
+  Cache-Control: no-cache
+
+/data/overrides.json
+  Cache-Control: no-cache
+
+/data/timetables.json
+  Cache-Control: no-cache
+
+/data/sw-kill.json
+  Cache-Control: no-cache
+
+/sw.js
+  Cache-Control: no-cache

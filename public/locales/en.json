@@ -67,5 +67,9 @@
   "hol_eid_al_fitr": "Eid al-Fitr",
   "hol_eid_al_adha": "Eid al-Adha",
   "hol_islamic_new_year": "Islamic New Year",
-  "hol_mawlid": "Mawlid"
+  "hol_mawlid": "Mawlid",
+  "install": "Install the app",
+  "ios_step1": "Tap Share",
+  "ios_step2": "then Add to Home Screen",
+  "close": "Close"
 }

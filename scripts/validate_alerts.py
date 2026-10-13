@@ -1,6 +1,6 @@
-"""Check public/data/alerts.json (and overrides.json) for mistakes before publishing.
+"""Check public/data/alerts.json, overrides.json and sw-kill.json for mistakes before publishing.
 
-Usage: python scripts/validate_alerts.py [alerts.json] [overrides.json]
+Usage: python scripts/validate_alerts.py [alerts.json] [overrides.json] [sw-kill.json]
 """
 import json
 import re
@@ -11,11 +11,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 ALERTS_FILE = ROOT / "public" / "data" / "alerts.json"
 OVERRIDES_FILE = ROOT / "public" / "data" / "overrides.json"
+KILL_FILE = ROOT / "public" / "data" / "sw-kill.json"
 
 SEVERITIES = ("info", "warning", "critical")
 LINES = ("all", "A", "D", "E")
 DATETIME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+HTML_RE = re.compile(r"<\s*/?\s*[a-zA-Z!]|&#?\w+;")
 
 
 def load_json(path):
@@ -47,6 +49,8 @@ def check_alert(alert, where, scheduled=False):
         text = alert.get(lang)
         if not isinstance(text, str) or not text.strip():
             errors.append(f'{where}: the {label} text "{lang}" is missing or empty.')
+        elif HTML_RE.search(text):
+            errors.append(f'{where}: the {label} text "{lang}" contains HTML code (like <b> or &amp;). Write plain text only.')
     if scheduled:
         times = {}
         for key in ("start", "end"):
@@ -118,9 +122,18 @@ def validate_overrides(data):
     return errors
 
 
-def run(alerts_path=ALERTS_FILE, overrides_path=OVERRIDES_FILE):
+def validate_kill(data):
+    if not isinstance(data, dict) or not isinstance(data.get("kill"), bool):
+        return ['The file must be exactly { "kill": false } (normal) or { "kill": true } (remove the offline cache from every phone).']
+    return []
+
+
+def run(alerts_path=ALERTS_FILE, overrides_path=OVERRIDES_FILE, kill_path=KILL_FILE):
     ok = True
-    for path, validate in ((alerts_path, validate_alerts), (overrides_path, validate_overrides)):
+    checks = [(alerts_path, validate_alerts), (overrides_path, validate_overrides)]
+    if Path(kill_path).exists():
+        checks.append((kill_path, validate_kill))
+    for path, validate in checks:
         data, errors = load_json(path)
         if not errors:
             errors = validate(data)
@@ -132,10 +145,12 @@ def run(alerts_path=ALERTS_FILE, overrides_path=OVERRIDES_FILE):
                 print(f"  - {e}")
         else:
             print(f"{name}: OK")
+            if validate is validate_kill and data["kill"]:
+                print("  NOTE: the kill switch is ON. Visitors' offline copies will be deleted. Set it back to false once fixed.")
     return ok
 
 
 if __name__ == "__main__":
     args = sys.argv[1:]
-    ok = run(*(Path(a) for a in args[:2])) if args else run()
+    ok = run(*(Path(a) for a in args[:3])) if args else run()
     sys.exit(0 if ok else 1)

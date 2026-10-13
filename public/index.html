@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>القطار القادم</title>
+  <meta name="description" content="Next Train: unofficial next-departure finder for Tunis suburban trains (lines A, D, E).">
+  <meta name="theme-color" content="#0B3C8C" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0A1428" media="(prefers-color-scheme: dark)">
+  <meta name="color-scheme" content="light dark">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="assets/icons/favicon.png">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="preload" href="assets/fonts/cairo-arabic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/styles.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <div id="critical-banner" class="critical-banner" role="alert" hidden></div>
+
+  <header class="hero">
+    <picture class="hero-media">
+      <source type="image/webp" srcset="assets/img/hero-train-800.webp 800w, assets/img/hero-train-1600.webp 1600w" sizes="100vw">
+      <img src="assets/img/hero-train-800.jpg" srcset="assets/img/hero-train-800.jpg 800w, assets/img/hero-train-1600.jpg 1600w" sizes="100vw"
+           width="1600" height="1067" alt="" data-i18n-attr="alt:hero_alt" fetchpriority="high" decoding="async">
+    </picture>
+
+    <div class="lang-toggle" role="group" data-i18n-attr="aria-label:lang_switch">
+      <button type="button" data-lang="ar" lang="ar" data-i18n="lang_ar"></button>
+      <span aria-hidden="true">|</span>
+      <button type="button" data-lang="en" lang="en" data-i18n="lang_en"></button>
+    </div>
+
+    <div class="wrap hero-inner">
+      <h1 class="brand">
+        <svg class="brand-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10a4 4 0 0 1 4 4v8a3 3 0 0 1-3 3l1.6 2.4a.6.6 0 0 1-1 .6L16.6 18H7.4L5.4 21a.6.6 0 0 1-1-.6L6 18a3 3 0 0 1-3-3V7a4 4 0 0 1 4-4Zm0 2.5A1.5 1.5 0 0 0 5.5 7v3A1.5 1.5 0 0 0 7 11.5h10a1.5 1.5 0 0 0 1.5-1.5V7A1.5 1.5 0 0 0 17 5.5H7Zm.5 8.5a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Zm9 0a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Z"/></svg>
+        <span data-i18n="app_title"></span>
+      </h1>
+      <p class="tagline" data-i18n="tagline"></p>
+      <p class="clock">
+        <span class="clock-dot" aria-hidden="true"></span>
+        <span data-i18n="now_in_tunis"></span>
+        <time id="clock" class="num"></time>
+        <span id="sim-badge" class="sim-badge" data-i18n="simulated" hidden></span>
+      </p>
+    </div>
+  </header>
+
+  <main class="wrap layout" id="app">
+    <section class="card planner" aria-labelledby="line-heading">
+      <h2 id="line-heading" class="section-label" data-i18n="choose_line"></h2>
+      <div id="lines" class="lines" role="group" aria-labelledby="line-heading"></div>
+
+      <div class="route-form">
+        <div class="field">
+          <label for="from" data-i18n="from"></label>
+          <select id="from" autocomplete="off"></select>
+        </div>
+        <div class="field">
+          <label for="to" data-i18n="to"></label>
+          <select id="to" autocomplete="off"></select>
+        </div>
+        <button type="button" id="swap" class="swap" data-i18n-attr="aria-label:swap;title:swap">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v13m0 0-3.5-3.5M7 17l3.5-3.5M17 20V7m0 0-3.5 3.5M17 7l3.5 3.5"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <section class="card result">
+      <div id="notices" class="notices"></div>
+      <div id="result" aria-live="polite">
+        <p class="empty" data-i18n="loading"></p>
+      </div>
+    </section>
+
+    <section class="card info" aria-labelledby="info-heading">
+      <picture class="info-media">
+        <source type="image/webp" srcset="assets/img/tunis-station-640.webp 640w, assets/img/tunis-station-1200.webp 1200w" sizes="(min-width: 900px) 520px, 100vw">
+        <img src="assets/img/tunis-station-640.jpg" srcset="assets/img/tunis-station-640.jpg 640w, assets/img/tunis-station-1200.jpg 1200w" sizes="(min-width: 900px) 520px, 100vw"
+             width="1200" height="416" alt="" data-i18n-attr="alt:station_alt" loading="lazy" decoding="async">
+      </picture>
+      <div class="info-body">
+        <h2 id="info-heading" data-i18n="info_title"></h2>
+        <ul id="alerts" class="alerts"></ul>
+        <ul class="info-list">
+          <li data-i18n="info_hub"></li>
+          <li data-i18n="info_express"></li>
+          <li data-i18n="info_days"></li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p class="wrap" data-i18n="footer"></p>
+  </footer>
+</body>
+</html>

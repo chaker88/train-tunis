@@ -1,0 +1,14 @@
+{
+  "_help": "Fixed public holidays repeat every year (month-day). Religious holidays (Eid al-Fitr, Eid al-Adha, Islamic New Year, Mawlid) are calculated automatically; correct them in overrides.json. Add a one-off holiday to 'dates' as {\"date\": \"YYYY-MM-DD\", \"name_en\": \"...\", \"name_ar\": \"...\"}.",
+  "fixed": [
+    { "month_day": "01-01", "name_en": "New Year's Day",   "name_ar": "رأس السنة الميلادية" },
+    { "month_day": "03-20", "name_en": "Independence Day", "name_ar": "عيد الاستقلال" },
+    { "month_day": "04-09", "name_en": "Martyrs' Day",     "name_ar": "عيد الشهداء" },
+    { "month_day": "05-01", "name_en": "Labour Day",       "name_ar": "عيد الشغل" },
+    { "month_day": "07-25", "name_en": "Republic Day",     "name_ar": "عيد الجمهورية" },
+    { "month_day": "08-13", "name_en": "Women's Day",      "name_ar": "عيد المرأة" },
+    { "month_day": "10-15", "name_en": "Evacuation Day",   "name_ar": "عيد الجلاء" },
+    { "month_day": "12-17", "name_en": "Revolution Day",   "name_ar": "عيد الثورة" }
+  ],
+  "dates": []
+}

@@ -1,0 +1,44 @@
+{
+  "_help": "Station names for each line, in order from the suburban terminus to Tunis. 'csv' lists the column names accepted in the timetable CSV files (accents, case and spaces are ignored; the English and Arabic names are also accepted). To add a station: copy one entry, give it a new id (lowercase, dashes), its English and Arabic names, and put it at its place in the line order.",
+  "A": [
+    {"id": "erriadh", "en": "Erriadh", "ar": "الرياض", "csv": ["Erriadh"]},
+    {"id": "borj-cedria", "en": "Borj Cedria", "ar": "برج السدرية", "csv": ["Borj Cedria"]},
+    {"id": "bir-el-bey", "en": "Bir El Bey", "ar": "بئر الباي", "csv": ["Bir El Bey"]},
+    {"id": "hammam-chatt", "en": "Hammam Chatt", "ar": "حمام الشط", "csv": ["Hammam Chatt"]},
+    {"id": "tahar-sfar", "en": "Tahar Sfar", "ar": "الطاهر صفر", "csv": ["Tahar Sfar"]},
+    {"id": "arret-du-stade", "en": "Arrêt du Stade", "ar": "محطة الملعب", "csv": ["Arret du Stade"]},
+    {"id": "hammam-lif", "en": "Hammam Lif", "ar": "حمام الأنف", "csv": ["Hammam Lif"]},
+    {"id": "bou-kornine", "en": "Bou Kornine", "ar": "بوقرنين", "csv": ["Bou Kornine"]},
+    {"id": "lycee-ezzahra", "en": "Lycée Ezzahra", "ar": "معهد الزهراء", "csv": ["Lycee Ezzahra"]},
+    {"id": "ez-zahra", "en": "Ez-Zahra", "ar": "الزهراء", "csv": ["Ez-Zahra"]},
+    {"id": "rades-meliane", "en": "Radès Méliane", "ar": "رادس مليان", "csv": ["Rades Meliane"]},
+    {"id": "rades", "en": "Radès", "ar": "رادس", "csv": ["Rades"]},
+    {"id": "lycee-rades", "en": "Lycée Radès", "ar": "معهد رادس", "csv": ["Lycee Rades"]},
+    {"id": "sidi-rezig", "en": "Sidi Rezig", "ar": "سيدي رزيق", "csv": ["Sidi Rezig"]},
+    {"id": "megrine", "en": "Mégrine", "ar": "مقرين", "csv": ["Megrine"]},
+    {"id": "megrine-ryadh", "en": "Mégrine Riadh", "ar": "مقرين الرياض", "csv": ["Megrine Ryadh", "Megrine Riadh"]},
+    {"id": "jebel-jelloud", "en": "Jebel Jelloud", "ar": "جبل الجلود", "csv": ["Jebel Jelloud"]},
+    {"id": "tunis", "en": "Tunis", "ar": "تونس", "csv": ["Tunis Ville", "Tunis"]}
+  ],
+  "D": [
+    {"id": "gobaa-ville", "en": "Gobaa Ville", "ar": "القباعة المدينة", "csv": ["Gobaa Ville"]},
+    {"id": "gobaa", "en": "Gobaa", "ar": "القباعة", "csv": ["Gobaa"]},
+    {"id": "les-orangers", "en": "Les Orangers", "ar": "حي البرتقال", "csv": ["Les Orangers"]},
+    {"id": "mannouba", "en": "Manouba", "ar": "منوبة", "csv": ["Mannouba", "Manouba"]},
+    {"id": "el-bortal", "en": "El Bortal", "ar": "البرطال", "csv": ["El Bortal"]},
+    {"id": "le-bardo", "en": "Le Bardo", "ar": "باردو", "csv": ["Le Bardo"]},
+    {"id": "erraoudha", "en": "Erraoudha", "ar": "الروضة", "csv": ["Erraoudha"]},
+    {"id": "mellassine", "en": "Mellassine", "ar": "الملاسين", "csv": ["Mellassine"]},
+    {"id": "saida-manoubia", "en": "Saïda Manoubia", "ar": "السيدة المنوبية", "csv": ["Sayada Mannoubia", "Saida Manoubia", "Saida Mannoubia"]},
+    {"id": "tunis", "en": "Tunis", "ar": "تونس", "csv": ["Tunis"]}
+  ],
+  "E": [
+    {"id": "bougatfa", "en": "Bougatfa", "ar": "بوقطفة", "csv": ["Bougatfa"]},
+    {"id": "al-hrairiya", "en": "Al Hrairiya", "ar": "الحرارية", "csv": ["Al Hrairiya"]},
+    {"id": "ezzouhour", "en": "Ezzouhour", "ar": "الزهور", "csv": ["Ezzouhour"]},
+    {"id": "ettayarane", "en": "Ettayarane", "ar": "الطيران", "csv": ["Ettayarane"]},
+    {"id": "ennajah", "en": "Ennajah", "ar": "النجاح", "csv": ["Ennajah"]},
+    {"id": "saida-manoubia", "en": "Saïda Manoubia", "ar": "السيدة المنوبية", "csv": ["Saida Manoubia", "Sayada Mannoubia", "Saida Mannoubia"]},
+    {"id": "tunis", "en": "Tunis", "ar": "تونس", "csv": ["Tunis"]}
+  ]
+}

@@ -1,0 +1,18 @@
+[
+  {
+    "id": "winter_2026_2027",
+    "type": "winter",
+    "priority": 1,
+    "valid_from": "2026-09-01",
+    "valid_to": "2027-06-30",
+    "lines": [
+      "A",
+      "D",
+      "E"
+    ],
+    "name": {
+      "ar": "توقيت الشتاء 2026-2027",
+      "en": "Winter timetable 2026–2027"
+    }
+  }
+]

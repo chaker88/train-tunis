@@ -71,5 +71,14 @@
   "install": "Install the app",
   "ios_step1": "Tap Share",
   "ios_step2": "then Add to Home Screen",
-  "close": "Close"
+  "close": "Close",
+  "dl_title": "Download timetables",
+  "dl_line": "Line {line} timetable",
+  "dl_size_kb": "{n} KB",
+  "dl_size_mb": "{n} MB",
+  "dl_source": "Source: official SNCFT posters. Unofficial app, not affiliated with SNCFT.",
+  "about_title": "About the developer",
+  "about_feedback": "Feedback or ideas? Message me on LinkedIn.",
+  "new_tab": "(opens in a new tab)",
+  "copyright": "© 2026 Chaker Saidi. All rights reserved."
 }

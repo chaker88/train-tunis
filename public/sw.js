@@ -1,4 +1,4 @@
-const CACHE_VERSION = "next-train-v3";
+const CACHE_VERSION = "next-train-v4";
 
 const APP_SHELL = [
   "./",
@@ -33,6 +33,8 @@ const NETWORK_FIRST = /\/data\/(alerts|overrides|timetables|holidays)\.json$/;
 const TIMETABLE = /\/data\/[^/]+\/line_[A-Z]\.json$/;
 // Kill switch: never cached, never answered by the worker.
 const KILL_FILE = /\/data\/sw-kill\.json$/;
+// Timetable posters are large: never precached, never stored, always fetched from the network.
+const DOWNLOADS = /\/downloads\//;
 
 let lastKillCheck = 0;
 
@@ -89,6 +91,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   // Cross-origin requests (e.g. Cloudflare Web Analytics) are never intercepted or cached.
   if (request.method !== "GET" || url.origin !== location.origin || KILL_FILE.test(url.pathname)) return;
+  if (DOWNLOADS.test(url.pathname)) return;
 
   if (request.mode === "navigate") {
     event.waitUntil(checkKillSwitch());

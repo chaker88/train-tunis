@@ -1152,3 +1152,141 @@ time {
   width: 18px;
   height: 18px;
 }
+
+/* Timetable downloads */
+.downloads h2 {
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.download-list {
+  display: grid;
+  gap: 8px;
+  margin-block: 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.dl-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 10px 12px;
+  border: 2px solid color-mix(in srgb, var(--line) 55%, var(--border));
+  border-radius: 14px;
+  background: var(--line-soft);
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.2s var(--ease), transform 0.15s var(--ease), box-shadow 0.2s var(--ease);
+}
+
+.dl-btn:hover {
+  border-color: var(--line);
+  box-shadow: 0 6px 16px -8px var(--line);
+}
+
+.dl-btn:active {
+  transform: scale(0.98);
+}
+
+.dl-btn .line-badge {
+  flex: none;
+}
+
+.dl-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.dl-name {
+  font-weight: 700;
+}
+
+.dl-meta {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.dl-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--line-text);
+}
+
+.dl-source {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+/* Footer: about the developer */
+.footer-inner {
+  display: grid;
+  gap: 16px;
+  justify-items: center;
+}
+
+.about {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  max-width: 560px;
+}
+
+.about h2 {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.about-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-block: 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.about-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--text);
+  font-weight: 700;
+  text-decoration: none;
+  transition: border-color 0.2s var(--ease), color 0.2s var(--ease);
+}
+
+.about-links a:hover {
+  border-color: var(--primary-2);
+  color: var(--primary-2);
+}
+
+.logo {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.copyright {
+  font-size: 0.78rem;
+}
+
+@media (min-width: 600px) {
+  .download-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (min-width: 900px) {
+  .downloads { grid-column: 1 / -1; grid-row: 3; }
+}

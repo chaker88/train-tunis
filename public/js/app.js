@@ -18,6 +18,8 @@ const ALL_LINES = ["A", "D", "E"];
 const STATE_KEY = "nextTrain.state";
 const REFRESH_MS = 30_000;
 const LOCAL_HOSTS = ["localhost", "127.0.0.1"];
+// Poster paths written by build_data.py, e.g. downloads/winter_2026_2027/horaires-ligne-A-hiver-2026-2027.webp
+const DOWNLOAD_PATH = /^downloads\/[a-z0-9_]+\/([A-Za-z0-9-]+\.(jpg|png|webp|pdf))$/;
 
 const $ = (id) => document.getElementById(id);
 const el = {
@@ -32,6 +34,8 @@ const el = {
   clock: $("clock"),
   simBadge: $("sim-badge"),
   app: $("app"),
+  downloads: $("downloads"),
+  downloadList: $("download-list"),
 };
 
 const cal = { timetables: [], holidays: {}, overrides: {} };
@@ -122,6 +126,48 @@ function saveState() {
 const stationName = (s) => s[getLang()];
 
 /* ---------- Rendering ---------- */
+
+// Poster of the timetable in force today for each line (same choice of period as the train times).
+function todayDownloads() {
+  return lineCodes
+    .map((code) => {
+      const d = activePeriod(now().date, code, cal).period?.downloads?.[code];
+      const m = d && typeof d.path === "string" && DOWNLOAD_PATH.exec(d.path);
+      return m && Number.isFinite(d.bytes) && d.bytes > 0 ? { code, path: d.path, file: m[1], ext: m[2], bytes: d.bytes } : null;
+    })
+    .filter(Boolean);
+}
+
+function fileSize(bytes) {
+  const mb = bytes >= 1024 * 1024;
+  const n = new Intl.NumberFormat(locale(), { maximumFractionDigits: mb ? 1 : 0 }).format(bytes / (mb ? 1024 * 1024 : 1024));
+  return t(mb ? "dl_size_mb" : "dl_size_kb", { n });
+}
+
+function renderDownloads() {
+  const items = todayDownloads();
+  renderInto(el.downloadList, JSON.stringify([getLang(), items]), () =>
+    items.map((d) =>
+      h(
+        "li",
+        null,
+        h(
+          "a",
+          { class: "dl-btn", "data-line": d.code, href: d.path, download: d.file },
+          h("span", { class: "line-badge", "aria-hidden": "true", text: d.code }),
+          h(
+            "span",
+            { class: "dl-text" },
+            h("span", { class: "dl-name", text: t("dl_line", { line: d.code }) }),
+            h("span", { class: "dl-meta num" }, h("bdi", { text: fileSize(d.bytes) }), " · ", h("bdi", { text: d.ext.toUpperCase() }))
+          ),
+          svg([["path", { d: "M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14" }]], { class: "icon dl-icon" })
+        )
+      )
+    )
+  );
+  el.downloads.hidden = !items.length;
+}
 
 function renderLines() {
   el.lines.replaceChildren(
@@ -377,6 +423,7 @@ async function renderAll() {
   await ensureDay(now().date, lineCodes).catch((err) => console.error(err));
   renderLines();
   renderSelects();
+  renderDownloads();
   for (const b of document.querySelectorAll(".lang-toggle button")) b.setAttribute("aria-pressed", String(b.dataset.lang === getLang()));
   await refresh();
 }

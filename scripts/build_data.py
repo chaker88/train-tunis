@@ -2,6 +2,8 @@
 
 Every folder in data/raw/ is one timetable period (winter_2026_2027, summer_2027, ramadan_2027...).
 Folders starting with "_" or "." are ignored.
+Optional timetable posters in data/raw/<period>/posters/line_A.jpg (or .png/.webp/.pdf) are copied
+to public/downloads/<period>/ with readable names. A missing poster never fails the build.
 """
 import csv
 import io
@@ -13,10 +15,13 @@ import unicodedata
 from datetime import date
 from pathlib import Path
 
+import build_site
+
 ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = ROOT / "data" / "raw"
 STATIONS_FILE = ROOT / "data" / "stations.json"
 OUT_DIR = ROOT / "public" / "data"
+DOWNLOADS_DIR = ROOT / "public" / "downloads"
 
 SERVICES = {
     "-": "daily",
@@ -50,6 +55,10 @@ FOLDER_HELP = (
     "    ramadan_2027       (Ramadan of 2027, dates found automatically)\n"
     "To keep an old folder without using it, rename it to start with an underscore, e.g. _old_winter."
 )
+
+
+POSTER_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".pdf")
+POSTER_TYPE_WORD = {"winter": "hiver", "summer": "ete", "ramadan": "ramadan"}
 
 
 class BuildError(Exception):
@@ -142,10 +151,71 @@ def discover(raw_dir):
         if not files:
             print(f"  note: {rel(folder)} has no CSV files yet, skipped.")
             continue
-        periods.append((period, files))
+        periods.append((period, files, folder))
     if not periods:
         raise BuildError(f"No timetable found in {rel(raw_dir)}.\n{FOLDER_HELP}")
     return periods
+
+
+# --- Timetable posters (downloads) ---
+
+def sniff_ext(data):
+    """Real file type from its first bytes: a poster saved as .jpg may really be a WebP or PNG."""
+    if data[:3] == b"\xff\xd8\xff":
+        return ".jpg"
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return ".png"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return ".webp"
+    if data[:5] == b"%PDF-":
+        return ".pdf"
+    return None
+
+
+def poster_name(period, code, ext):
+    years = "-".join(re.findall(r"\d{4}", period["id"]))
+    return f"horaires-ligne-{code}-{POSTER_TYPE_WORD[period['type']]}-{years}{ext}"
+
+
+def find_posters(folder):
+    """{line code: path} for data/raw/<period>/posters/line_<code>.<ext>. Missing posters are simply absent."""
+    pdir = folder / "posters"
+    found = {}
+    if not pdir.is_dir():
+        return found
+    for f in sorted(pdir.iterdir()):
+        m = re.fullmatch(r"line_([a-z])", f.stem, re.IGNORECASE)
+        if not f.is_file() or f.suffix.lower() not in POSTER_EXTS or not m or m.group(1).upper() not in LINES:
+            if f.is_file() and not f.name.startswith("."):
+                print(f"  note: ignoring {rel(f)} (posters must be named line_A, line_D or line_E with .jpg, .png, .webp or .pdf).")
+            continue
+        code = m.group(1).upper()
+        if code in found:
+            print(f"  note: two posters for line {code} in {rel(pdir)}; using {found[code].name}, ignoring {f.name}.")
+            continue
+        found[code] = f
+    return found
+
+
+def copy_posters(period, folder, downloads_dir):
+    """Copy the period's posters to downloads_dir/<period>/. Returns {code: {"path", "bytes"}} for timetables.json.
+
+    The Python standard library cannot decode or re-encode JPEG/WebP images, so posters are copied unchanged."""
+    out = {}
+    for code, src in find_posters(folder).items():
+        data = src.read_bytes()
+        ext = sniff_ext(data)
+        if ext is None:
+            print(f"  note: {rel(src)} is not a readable JPEG, PNG, WebP or PDF file; its download button is hidden.")
+            continue
+        if ext != src.suffix.lower().replace(".jpeg", ".jpg"):
+            print(f"  note: {rel(src)} is really a {ext[1:].upper()} file; it is published as {ext}.")
+        name = poster_name(period, code, ext)
+        pdir = downloads_dir / period["id"]
+        pdir.mkdir(parents=True, exist_ok=True)
+        (pdir / name).write_bytes(data)
+        out[code] = {"path": f"downloads/{period['id']}/{name}", "bytes": len(data)}
+    return out
 
 
 # --- Lenient CSV reading ---
@@ -295,21 +365,25 @@ def build_line(code, path, period, stations):
     }
 
 
-def build(raw_dir=RAW_DIR, out_dir=OUT_DIR, stations_file=STATIONS_FILE):
+def build(raw_dir=RAW_DIR, out_dir=OUT_DIR, stations_file=STATIONS_FILE, downloads_dir=None):
+    """downloads_dir: where posters are copied (main() passes public/downloads). None skips posters."""
     stations = load_stations(stations_file)
     found = discover(raw_dir)
     built = []
-    for period, files in found:
+    for period, files, folder in found:
         lines = {code: build_line(code, path, period, stations) for code, path in sorted(files.items())}
-        built.append((period, lines))
+        built.append((period, lines, folder))
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    keep = {p["id"] for p, _ in built}
-    for d in out_dir.iterdir():
-        if d.is_dir() and d.name not in keep and any(p.match(d.name) for _, p, _ in PERIOD_TYPES):
-            shutil.rmtree(d)
+    keep = {p["id"] for p, _, _ in built}
+    for base in (out_dir, downloads_dir):
+        if base is None or not base.is_dir():
+            continue
+        for d in base.iterdir():
+            if d.is_dir() and (d.name not in keep or base == downloads_dir) and any(p.match(d.name) for _, p, _ in PERIOD_TYPES):
+                shutil.rmtree(d)
     index, summary = [], []
-    for period, lines in built:
+    for period, lines, folder in built:
         pdir = out_dir / period["id"]
         if pdir.exists():
             shutil.rmtree(pdir)
@@ -319,7 +393,10 @@ def build(raw_dir=RAW_DIR, out_dir=OUT_DIR, stations_file=STATIONS_FILE):
                 json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
             counts = {d: sum(t["dir"] == d for t in data["trips"]) for d in ("to_tunis", "from_tunis")}
             summary.append((period["id"], code, counts["to_tunis"], counts["from_tunis"]))
-        index.append({**{k: v for k, v in period.items() if k != "name"}, "lines": sorted(lines), "name": period["name"]})
+        entry = {**{k: v for k, v in period.items() if k != "name"}, "lines": sorted(lines), "name": period["name"]}
+        if downloads_dir is not None:
+            entry["downloads"] = copy_posters(period, folder, downloads_dir)
+        index.append(entry)
     index.sort(key=lambda p: (p["priority"], p["id"]))
     with (out_dir / "timetables.json").open("w", encoding="utf-8", newline="\n") as f:
         json.dump(index, f, ensure_ascii=False, indent=2)
@@ -329,7 +406,7 @@ def build(raw_dir=RAW_DIR, out_dir=OUT_DIR, stations_file=STATIONS_FILE):
 
 def main():
     try:
-        summary = build()
+        summary = build(downloads_dir=DOWNLOADS_DIR)
     except BuildError as e:
         print(f"\nBUILD FAILED\n{e}\n", file=sys.stderr)
         sys.exit(1)
@@ -337,6 +414,13 @@ def main():
     for pid, code, to_t, from_t in summary:
         print(f"{pid:<20} {code:<5} {to_t:>9} {from_t:>11}")
     print(f"OK: {len(summary)} timetable files written to {rel(OUT_DIR)}/")
+    index = json.loads((OUT_DIR / "timetables.json").read_text(encoding="utf-8"))
+    posters = [(p["id"], code, d) for p in index for code, d in sorted(p.get("downloads", {}).items())]
+    for pid, code, d in posters:
+        print(f"  poster {pid} line {code}: public/{d['path']} ({d['bytes'] / 1024:.0f} KB)")
+    if not posters:
+        print("  no timetable posters found (optional: data/raw/<period>/posters/line_A.jpg ...)")
+    build_site.main()
 
 
 if __name__ == "__main__":

@@ -7,6 +7,8 @@ An **unofficial**, static, mobile-first website that shows the next 3 trains on 
 - Light and dark mode. Works offline once installed (the service worker is active only when not on localhost).
 - "Install the app" button on Android/Chrome, plus a short "Share → Add to Home Screen" guide on iPhone/iPad. It is hidden once the app is installed.
 - Strict Content-Security-Policy. All text from data files is shown as plain text, never as HTML.
+- "Download timetables" buttons for the official posters of lines A, D and E (for the timetable in force today), with their file size.
+- Search and social-media previews: description, Open Graph / Twitter card with a preview image, JSON-LD, `robots.txt` and `sitemap.xml`.
 
 **Data source:** SNCFT Banlieue de Tunis timetables, transcribed into CSV files in `data/raw/`. This app is not affiliated with SNCFT. Always check at the station.
 
@@ -75,6 +77,8 @@ You only ever need to do two things: **add timetable files** and **edit the mess
 
 3. Copy the CSV files into it. The file name must contain **Erriadh** (line A), **Gobaa** (line D) or **Bougatfa** (line E), for example `Erriadh_Tunis.csv`. You don't need all three lines: if Ramadan is published only for line A, put only that file. The other lines keep using the normal timetable, and the site shows a warning.
 4. Double-click **`start.bat`**.
+
+**Timetable posters (optional):** to offer the official posters for download, put them in a `posters` folder inside the timetable folder, named `line_A.jpg`, `line_D.jpg` and `line_E.jpg` (`.png`, `.webp` and `.pdf` also work), for example `data/raw/winter_2026_2027/posters/line_A.jpg`. `start.bat` copies them to `public/downloads/<folder>/` with readable names such as `horaires-ligne-A-hiver-2026-2027.jpg` and prints their sizes. The file type is read from the file itself, so a WebP saved as `.jpg` is published as `.webp`. A missing poster is not an error: its button is simply hidden. Posters are copied unchanged (Python alone cannot shrink images), so keep them reasonably small, ideally under about 1 MB each. Phones never keep posters in the offline copy; they are always downloaded fresh.
 
 That's it. When a Ramadan or summer timetable applies, the site switches to it automatically. On Ramadan days, a Ramadan timetable always wins over winter or summer.
 
@@ -197,6 +201,10 @@ If `alerts.json` is broken and you reload the page without running `start.bat`, 
   While the switch is on, the site still works normally, just not offline. `start.bat` reminds you when it is on.
 - **Check before you publish:** look at what changed (for example with `git diff`), and only publish from your own computer.
 
+### 7. Your site address (before publishing)
+
+Open `data/site.json` and replace `https://REPLACE-ME.pages.dev` with your real address, then run `start.bat`. It writes the address into the search and social-media tags of `public/index.html`, into `public/robots.txt` and `public/sitemap.xml`, and updates the JSON-LD hash in the security policy. This is the only place the address is set; don't edit the block between the `site-meta` markers in `index.html` by hand.
+
 ## Analytics
 
 The site may use **Cloudflare Web Analytics**: privacy-friendly visit counts, with no cookies and no personal data. It is the **only** third-party service the site talks to, and the security policy allows exactly two outside addresses for it:
@@ -206,7 +214,7 @@ The site may use **Cloudflare Web Analytics**: privacy-friendly visit counts, wi
 | `https://static.cloudflareinsights.com` | `script-src` | Loads Cloudflare's small analytics script (`beacon.min.js`) |
 | `https://cloudflareinsights.com` | `connect-src` | Where that script sends the anonymous page-view count |
 
-Everything else stays limited to the site itself. This is set in both `public/_headers` and the `<meta>` tag in `public/index.html`, and a test (`tests/security.test.mjs`) fails if any other outside address is ever added. The offline service worker ignores both addresses: it never intercepts or stores analytics requests, so offline mode never sends or replays stale counts.
+Everything else stays limited to the site itself. The only inline script is the JSON-LD data block in `<head>`; it is allowed by its exact `sha256-…` hash (never `'unsafe-inline'`), which `scripts/build_site.py` keeps up to date in both places. This is set in both `public/_headers` and the `<meta>` tag in `public/index.html`, and a test (`tests/security.test.mjs`) fails if any other outside address is ever added. The offline service worker ignores both addresses: it never intercepts or stores analytics requests, so offline mode never sends or replays stale counts.
 
 **To turn it on:** in the Cloudflare dashboard, open your site's project → **Metrics → Web Analytics → Enable**. Cloudflare then adds its script automatically, with no code change. If your setup asks you to paste a snippet instead, add it to `public/index.html` just before `</body>`, exactly as given (a `<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='…'>` tag). It works with the security policy because it loads from the allowed address and contains no inline code.
 
@@ -218,7 +226,7 @@ If analytics stops working after a Cloudflare change (for example, it starts usi
 |---|---|
 | `data/raw/<period>/` | Timetable CSV files, one folder per period |
 | `data/stations.json` | Station names (Arabic/English) and accepted CSV spellings |
-| `scripts/build_data.py` | Reads all period folders and writes `public/data/<period>/line_*.json` plus `public/data/timetables.json` |
+| `scripts/build_data.py` | Reads all period folders and writes `public/data/<period>/line_*.json`, `public/data/timetables.json` and the poster downloads |
 | `scripts/validate_alerts.py` | Checks `alerts.json` and `overrides.json` |
 | `public/data/alerts.json` | The "Good to know" message and planned alerts (edit by hand) |
 | `public/data/overrides.json` | Official Ramadan/Eid dates and period date changes (edit by hand) |
@@ -235,8 +243,18 @@ If analytics stops working after a Cloudflare change (for example, it starts usi
 | `scripts/lan_ip.py` | Prints this PC's Wi-Fi address (used by `start_lan.bat`) |
 | `start.bat` / `start.sh` | One-click build, check, test and run |
 | `start_lan.bat` | Same as `start.bat`, but reachable from a phone on the same Wi-Fi |
+| `data/raw/<period>/posters/` | Optional official timetable posters (`line_A.jpg`, `line_D.jpg`, `line_E.jpg`) |
+| `public/downloads/<period>/` | Generated: published copies of the posters (never cached by the offline worker) |
+| `data/site.json` | `SITE_URL`: the site's public address, the single place it is set |
+| `scripts/build_site.py` | Writes `SITE_URL` into the `<head>` tags, `robots.txt` and `sitemap.xml`, and the JSON-LD hash into the CSP (run by `build_data.py`) |
+| `public/assets/og-image.png` | 1200×630 preview image for social media |
 
 ## Credits
 
+- Designed and built by Chaker Saidi ([LinkedIn](https://www.linkedin.com/in/chaker-saidi)), with the assistance of Claude Code.
 - Font: [Cairo](https://github.com/Gue3bara/Cairo), SIL Open Font License 1.1 (`public/assets/fonts/OFL.txt`), self-hosted.
 - Photos: supplied by the project owner.
+
+## License
+
+Copyright (c) 2026 Chaker Saidi. All rights reserved. The code, design and assets are published for viewing and portfolio purposes only; no permission is granted to copy, modify, distribute, host, sublicense or use them without prior written permission. Timetable information is derived from public SNCFT timetables and remains subject to SNCFT's rights. This is an unofficial project, not affiliated with SNCFT. See [LICENSE](LICENSE).

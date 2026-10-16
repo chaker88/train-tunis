@@ -226,5 +226,67 @@ class FixtureTest(unittest.TestCase):
             self.build()
 
 
+JPEG = b"\xff\xd8\xff\xe0" + b"jpeg-bytes"
+WEBP = b"RIFF\x10\x00\x00\x00WEBPVP8 " + b"webp-bytes"
+PDF = b"%PDF-1.7 pdf-bytes"
+
+
+class PosterTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.raw = Path(self.tmp.name) / "raw"
+        self.out = Path(self.tmp.name) / "out"
+        self.downloads = Path(self.tmp.name) / "downloads"
+        (self.raw / WINTER).mkdir(parents=True)
+        (self.raw / WINTER / "Bougatfa_Tunis.csv").write_text(f"{E_HEADER}\n{E_ROW}\n", encoding="utf-8")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def poster(self, name, data, folder=WINTER):
+        d = self.raw / folder / "posters"
+        d.mkdir(parents=True, exist_ok=True)
+        (d / name).write_bytes(data)
+
+    def build(self):
+        build_data.build(raw_dir=self.raw, out_dir=self.out, downloads_dir=self.downloads)
+        return json.loads((self.out / "timetables.json").read_text(encoding="utf-8"))[0]["downloads"]
+
+    def test_posters_copied_with_readable_names(self):
+        self.poster("line_A.jpg", JPEG)
+        self.poster("LINE_e.PDF", PDF)
+        downloads = self.build()
+        self.assertEqual(downloads, {
+            "A": {"path": f"downloads/{WINTER}/horaires-ligne-A-hiver-2026-2027.jpg", "bytes": len(JPEG)},
+            "E": {"path": f"downloads/{WINTER}/horaires-ligne-E-hiver-2026-2027.pdf", "bytes": len(PDF)},
+        })
+        self.assertEqual((self.downloads / WINTER / "horaires-ligne-A-hiver-2026-2027.jpg").read_bytes(), JPEG)
+
+    def test_real_format_wins_over_extension(self):
+        self.poster("line_D.jpg", WEBP)
+        self.assertEqual(self.build()["D"]["path"], f"downloads/{WINTER}/horaires-ligne-D-hiver-2026-2027.webp")
+
+    def test_missing_or_bad_posters_do_not_fail(self):
+        self.assertEqual(self.build(), {})
+        self.poster("line_A.png", b"not an image")
+        self.poster("line_Z.jpg", JPEG)
+        self.poster("notes.txt", b"hello")
+        self.assertEqual(self.build(), {})
+
+    def test_summer_and_ramadan_names(self):
+        self.assertEqual(build_data.poster_name({"id": "summer_2027", "type": "summer"}, "A", ".jpg"), "horaires-ligne-A-ete-2027.jpg")
+        self.assertEqual(build_data.poster_name({"id": "ramadan_2028", "type": "ramadan"}, "D", ".png"), "horaires-ligne-D-ramadan-2028.png")
+
+    def test_removed_poster_is_deleted(self):
+        self.poster("line_A.jpg", JPEG)
+        self.build()
+        (self.raw / WINTER / "posters" / "line_A.jpg").unlink()
+        self.assertEqual(self.build(), {})
+        self.assertEqual(list(self.downloads.rglob("*.jpg")), [])
+
+    def test_real_posters_are_found(self):
+        self.assertEqual(sorted(build_data.find_posters(build_data.RAW_DIR / WINTER)), ["A", "D", "E"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
@@ -136,8 +137,11 @@ const pub = (p) => fileURLToPath(new URL(`../public/${p}`, import.meta.url));
 const read = (p) => readFileSync(pub(p), "utf8");
 // The only third-party origins allowed anywhere: Cloudflare Web Analytics (script + beacon). See README "Analytics".
 const ANALYTICS = { "script-src": "https://static.cloudflareinsights.com", "connect-src": "https://cloudflareinsights.com" };
+// The only inline script is the JSON-LD block; the CSP allows it by its sha256 hash (scripts/build_site.py keeps it in sync).
+const LD_RE = /<script type="application\/ld\+json">([^<]*)<\/script>/;
+const LD_HASH = `sha256-${createHash("sha256").update(LD_RE.exec(read("index.html"))[1], "utf8").digest("base64")}`;
 const CSP =
-  "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self'; img-src 'self' data:; font-src 'self'; " +
+  `default-src 'self'; script-src 'self' '${LD_HASH}' https://static.cloudflareinsights.com; style-src 'self'; img-src 'self' data:; font-src 'self'; ` +
   "connect-src 'self' https://cloudflareinsights.com; manifest-src 'self'; worker-src 'self'";
 
 function externalSources(policy) {
@@ -167,7 +171,12 @@ test("index.html has a strict CSP and nothing inline", () => {
   assert.ok(meta[1].includes("base-uri 'self'") && meta[1].includes("form-action 'none'"));
   assert.ok(!meta[1].includes("frame-ancestors"), "frame-ancestors is ignored in <meta>, keep it in _headers");
   assert.ok(html.indexOf("Content-Security-Policy") < html.indexOf("<link"), "CSP comes before any resource");
-  assert.ok(!/<script(?![^>]*\bsrc=)[^>]*>/.test(html), "no inline <script>");
+  const inline = html.match(/<script(?![^>]*\bsrc=)[^>]*>/g) || [];
+  assert.deepEqual(inline, ['<script type="application/ld+json">'], "the only inline <script> is the JSON-LD data block");
+  assert.ok(!html.includes("unsafe-inline") && !read("_headers").includes("unsafe-inline"), "no 'unsafe-inline'");
+  const ld = JSON.parse(LD_RE.exec(html)[1]);
+  assert.equal(ld["@type"], "WebApplication");
+  assert.equal(ld.author.name, "Chaker Saidi");
   assert.ok(!/<style/i.test(html), "no <style> block");
   assert.ok(!/\sstyle\s*=/.test(html), "no style= attribute");
   assert.ok(!/\son[a-z]+\s*=/.test(html), "no inline event handler");
@@ -246,4 +255,36 @@ test("service worker never intercepts or caches Cloudflare Web Analytics", async
   assert.equal(fire("https://trains.example/js/app.js").respondWith, 1, "same-origin files are still handled");
   await new Promise((r) => setTimeout(r, 10));
   assert.ok(!cachePuts.some((u) => /cloudflareinsights/.test(u)));
+});
+
+test("service worker never precaches or intercepts timetable downloads", () => {
+  const sw = read("sw.js");
+  const shell = /const APP_SHELL = \[([^\]]*)\]/.exec(sw)[1];
+  assert.ok(!shell.includes("downloads"), "no poster in the precache list");
+  const handlers = {};
+  vm.runInNewContext(sw, {
+    self: { addEventListener: (type, fn) => (handlers[type] = fn), registration: {}, clients: {} },
+    location: new URL("https://trains.example/sw.js"),
+    caches: { open: async () => ({ put() {}, addAll: async () => {} }), match: async () => undefined, keys: async () => [] },
+    fetch: async () => ({ ok: true, clone: () => ({}) }),
+    URL,
+    Date,
+    Promise,
+  });
+  for (const mode of ["navigate", "no-cors", "cors"]) {
+    let responded = 0;
+    handlers.fetch({
+      request: { url: "https://trains.example/downloads/winter_2026_2027/horaires-ligne-A-hiver-2026-2027.webp", method: "GET", mode },
+      respondWith: () => responded++,
+      waitUntil: () => {},
+    });
+    assert.equal(responded, 0, `downloads go straight to the network (${mode})`);
+  }
+});
+
+test("external links open safely in a new tab", () => {
+  const html = read("index.html");
+  const links = html.match(/<a\s[^>]*href="https?:[^"]*"[^>]*>/g) || [];
+  assert.ok(links.some((a) => a.includes("https://www.linkedin.com/in/chaker-saidi")));
+  for (const a of links) assert.match(a, /target="_blank" rel="noopener noreferrer"/, a);
 });
